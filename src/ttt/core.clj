@@ -92,8 +92,8 @@
 (defn desirability
   [to-move outcome]
   (if (= :x to-move)
-    ({:x 3 nil 2 :o 1} outcome)
-    ({:o 3 nil 2 :x 1} outcome)))
+    ({:x 1 nil 2 :o 3} outcome)
+    ({:o 1 nil 2 :x 3} outcome)))
 
 ; Also returns :x, :o, or nil
 (def ultimate-state*
