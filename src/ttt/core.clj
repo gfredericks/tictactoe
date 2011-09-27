@@ -1,4 +1,6 @@
-(ns ttt.core)
+(ns ttt.core
+  (:require [clojure.string :as string])
+  (:gen-class))
 
 (defn map3 [f] (map f (range 3)))
 
@@ -129,3 +131,47 @@
 (defn make-move
   [g to-move]
   (set-el g (choose-move g to-move) to-move))
+
+;; UI
+
+(defn get-input
+  []
+  (let [s (.readLine *in*)]
+    (cond
+      (re-find #"^q" s)
+        :quit
+      (re-matches #"\d" s)
+        (new Integer s)
+      :else
+        (throw (new Exception "Bad user input!")))))
+
+(defn print-game
+  [g]
+  (println
+    (string/join "\n-----\n"
+      (for [row g]
+        (string/join "|" (for [el row] (name (or el " "))))))
+    "\n"))
+
+(defn play-game
+  "Returns true if user wants to play again."
+  []
+  (loop [g new-game]
+    (if-let [res (current-state g)]
+      (do
+        (println (name res) "wins!")
+        true)
+      (do
+        (print-game g)
+        (let [next-move (get-input)]
+          (when-not (= :quit next-move)
+            (let [g (set-el g next-move :x)]
+              (print-game g)
+              (if (current-state g)
+                (recur g)
+                (recur (make-move g :o))))))))))
+
+(defn -main
+  []
+  (loop [another? (play-game)]
+    (if another? (recur (play-game)))))
