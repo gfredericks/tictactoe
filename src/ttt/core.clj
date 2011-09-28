@@ -1,5 +1,6 @@
 (ns ttt.core
   (:require [clojure.string :as string])
+  (:use [slingshot.core :only [try+ throw+]])
   (:gen-class))
 
 (defn map3 [f] (map f (range 3)))
@@ -110,6 +111,8 @@
               with-desirability
                 (for [[outcome move] moves-with-outcomes]
                   [(desirability to-move outcome) outcome move]),
+              ; This could be optimized by not sorting but rather walking through the
+              ; lazy seq and returning early if a winning move is found
               sorted
                 (sort-by first with-desirability),
               best-outcome (-> sorted first second)]
@@ -136,44 +139,76 @@
 
 (defn get-input
   []
-  (let [s (.readLine *in*)]
-    (cond
-      (re-find #"^q" s)
-        :quit
-      (re-matches #"\d" s)
-        (new Integer s)
-      :else
-        (throw (new Exception "Bad user input!")))))
+  (println "Please input a move from 1 to 9 (as on a phone keypad):")
+  (loop []
+    (print "$ ")
+    (.flush *out*)
+    (let [s (.readLine *in*)]
+      (cond
+        (re-find #"^q" s)
+          (throw+ :quit)
+        (re-matches #"\d" s)
+          (new Integer s)
+        :else
+          (do
+            (println "Bad input! Expected a single digit or \"quit\".")
+            (recur))))))
+
+(def print-hr (partial println (apply str (repeat 35 "-"))))
 
 (defn print-game
   [g]
+  (print "\n")
   (println
     (string/join "\n-----\n"
       (for [row g]
         (string/join "|" (for [el row] (name (or el " "))))))
     "\n"))
 
+(defn user-turn
+  [g to-move]
+  (print-hr)
+  (println "Your turn!")
+  (print-game g)
+  (loop [move (get-input)]
+    (if ((set (available-moves g)) move)
+      (set-el g move to-move)
+      (do
+        (println "That move isn't available!")
+        (recur (get-input))))))
+
+(defn bot-turn
+  [g to-move]
+  (let [move (choose-move g to-move)]
+    (println "Bot places a" (name to-move) "in square" move)
+    (set-el g move to-move)))
+
 (defn play-game
-  "Returns true if user wants to play again."
-  []
-  (loop [g new-game]
-    (if-let [res (current-state g)]
-      (do
-        (println (name res) "wins!")
-        true)
-      (do
-        (print-game g)
-        (let [next-move (get-input)]
-          (when-not (= :quit next-move)
-            (let [g (set-el g next-move :x)]
-              (print-game g)
-              (if (current-state g)
-                (recur g)
-                (recur (make-move g :o))))))))))
+  [player-starts?]
+  (print "\n")
+  (print-hr)
+  (println "  NEW GAME")
+  (print-hr)
+  (loop [g new-game, to-move :x, player-moves? player-starts?]
+    (let [g (if player-moves? (user-turn g to-move) (bot-turn g to-move))]
+      (if-let [res (current-state g)]
+        (do
+          (print-game g)
+          (println (name res) "wins!"))
+        (if (empty? (available-moves g))
+          (do
+            (print-game g)
+            (println "Tie."))
+          (recur g (opposite to-move) (not player-moves?)))))))
 
 (defn -main
   []
   ; prime the memoizer in another thread to reduce first-move-lag
   (future (ultimate-state new-game :x))
-  (loop [another? (play-game)]
-    (if another? (recur (play-game)))))
+  (try+
+    (loop []
+      (play-game (rand-nth [true false]))
+      (Thread/sleep 2000)
+      (recur))
+    (catch #{:quit} _
+      (println "Seeya"))))
