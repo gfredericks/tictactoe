@@ -173,5 +173,7 @@
 
 (defn -main
   []
+  ; prime the memoizer in another thread to reduce first-move-lag
+  (future (ultimate-state new-game :x))
   (loop [another? (play-game)]
     (if another? (recur (play-game)))))
