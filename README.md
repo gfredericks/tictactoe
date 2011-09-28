@@ -4,7 +4,7 @@ A tic-tac-toe bot that never loses.
 
 ## Usage
 
-`lein run`
+`lein trampoline run`
 
 ## License
 
