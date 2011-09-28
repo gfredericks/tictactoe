@@ -1,13 +1,13 @@
 # ttt
 
-FIXME: write description
+A tic-tac-toe bot that never loses.
 
 ## Usage
 
-FIXME: write
+`lein run`
 
 ## License
 
-Copyright (C) 2011 FIXME
+Copyright (C) 2011 Gary Fredericks
 
 Distributed under the Eclipse Public License, the same as Clojure.
